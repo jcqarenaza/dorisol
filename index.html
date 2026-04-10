@@ -446,7 +446,8 @@ mark { background: #fef9c3; color: var(--text); border-radius: 2px; padding: 0 1
       <label>Contraseña</label>
       <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" value="admin123">
     </div>
-    <button class="btn btn-primary btn-full" onclick="doLogin()">Ingresar →</button>
+    <button class="btn btn-primary btn-full" id="btn-login" onclick="doLogin()">Ingresar →</button>
+    <div id="login-error"></div>
 
     <hr class="divider">
     <div class="info-box">
@@ -635,7 +636,26 @@ mark { background: #fef9c3; color: var(--text); border-radius: 2px; padding: 0 1
       <div id="usuarios-lista"></div>
     </div>
 
+
+    <!-- REMITOS -->
+    <div class="page" id="page-remitos">
+      <div class="ph"><div class="ph-title">Remitos</div></div>
+      <div class="card" style="padding:12px"><input type="text" id="rem-search" placeholder="🔍 Número o cliente..." oninput="filtrarRemitos()"></div>
+      <div id="remitos-lista"></div>
+    </div>
+
+    <!-- CUENTA CORRIENTE -->
+    <div class="page" id="page-cuentas">
+      <div class="ph"><div class="ph-title">Cuenta Corriente</div></div>
+      <div class="card" style="padding:12px"><input type="text" id="cc-search" placeholder="🔍 Buscar cliente..." oninput="filtrarCC()"></div>
+      <div id="cc-lista"></div>
+    </div>
+
   </div><!-- /main-content -->
+
+<div class="modal-overlay" id="modal-remito"><div class="modal"><div class="modal-handle"></div><div class="modal-head"><div class="modal-title" id="mr-title">Remito</div><button class="modal-close" onclick="closeModal('modal-remito')">✕</button></div><div id="mr-body"></div></div></div>
+<div class="modal-overlay" id="modal-cc"><div class="modal"><div class="modal-handle"></div><div class="modal-head"><div class="modal-title" id="mcc-title">Cuenta Corriente</div><button class="modal-close" onclick="closeModal('modal-cc')">✕</button></div><div id="mcc-body"></div></div></div>
+<div class="modal-overlay" id="modal-pago"><div class="modal"><div class="modal-handle"></div><div class="modal-head"><div class="modal-title">Registrar Pago</div><button class="modal-close" onclick="closeModal('modal-pago')">✕</button></div><div id="mpago-body"></div></div></div>
 </div><!-- /app -->
 
 <!-- MODAL PEDIDO -->
@@ -713,6 +733,10 @@ let user=null, pedidos=[], productos=[], clientes=[], items=[];
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value.trim();
+  const btn   = document.getElementById('btn-login');
+  const errDiv = document.getElementById('login-error');
+  errDiv.innerHTML = '';
+  btn.textContent = 'Conectando...'; btn.disabled = true;
   try {
     const res = await db('sys_usuarios','GET',null,
       `?select=*&email=eq.${encodeURIComponent(email)}&password_hash=eq.${encodeURIComponent(pass)}&activo=eq.true`);
@@ -725,7 +749,20 @@ async function doLogin() {
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
     startApp();
-  } catch(e) { toast('Error: '+e.message,'error'); }
+  } catch(e) {
+    const esRed = e.message.includes('fetch')||e.message.includes('Network')||e.message.includes('Failed')||e.message.includes('Load failed');
+    if (esRed) {
+      errDiv.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px;font-size:13px;color:#dc2626;margin-top:12px;line-height:1.6;">
+        <strong>⚠️ Sin conexión al servidor</strong><br><br>
+        El sistema necesita abrirse desde una <strong>URL web</strong> — no como archivo descargado.<br><br>
+        Solución: abrí el link que te envíe el admin en el navegador del celu.
+      </div>`;
+    } else {
+      toast('Error: '+e.message,'error');
+    }
+  } finally {
+    btn.textContent = 'Ingresar →'; btn.disabled = false;
+  }
 }
 
 function doLogout() {
@@ -765,6 +802,8 @@ function navTo(page) {
   if (page==='dashboard')   cargarDash();
   if (page==='pedidos')     cargarPedidos();
   if (page==='panel')       cargarPanel();
+  if (page==='remitos')     cargarRemitos();
+  if (page==='cuentas')     cargarCC();
   if (page==='productos')   cargarProductos();
   if (page==='clientes')    cargarClientes();
   if (page==='usuarios')    cargarUsuarios();
@@ -842,6 +881,7 @@ function renderPedidoCards(list) {
       <div class="pedido-card-actions">
         <button class="btn btn-secondary btn-sm" onclick="verPedido('${p.id}')">Ver detalle</button>
         ${puede?`<button class="btn btn-secondary btn-sm" onclick="pantallaEstado('${p.id}','${p.estado}')">Cambiar estado</button>`:''}
+        ${puede&&p.estado==='para_despachar'?`<button class="btn btn-secondary btn-sm" style="background:var(--purple-l,#ede9fe);color:var(--purple,#8b5cf6);border-color:var(--purple,#8b5cf6)" onclick="generarRemito('${p.id}')">🧾 Remito</button>`:''}
         <button class="btn btn-secondary btn-sm" onclick="imprimirPedido('${p.id}')">🖨 Imprimir</button>
       </div>
     </div>`).join('');
@@ -1312,6 +1352,195 @@ async function imprimirPedido(id) {
     </body></html>`);
     w.document.close();
   }catch(e){toast('Error al imprimir','error');}
+}
+
+
+// ============================================================
+// REMITOS
+// ============================================================
+let remitos=[];
+async function cargarRemitos(){
+  remitos=await db('remitos','GET',null,'?select=*,clientes(nombre)&order=created_at.desc')||[];
+  renderRemitos(remitos);
+}
+function filtrarRemitos(){
+  const q=(document.getElementById('rem-search').value||'').toLowerCase();
+  renderRemitos(remitos.filter(r=>String(r.numero).includes(q)||(r.clientes?.nombre||'').toLowerCase().includes(q)));
+}
+function renderRemitos(list){
+  const el=document.getElementById('remitos-lista');
+  if(!list.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-text">Sin remitos</div></div>`;return;}
+  el.innerHTML=list.map(r=>`<div class="list-card">
+    <div class="list-card-top">
+      <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--purple,#8b5cf6)">R-${String(r.numero).padStart(4,'0')}</span>
+      <span class="badge badge-emitido">${r.estado}</span>
+    </div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:3px">${r.clientes?.nombre||'—'}</div>
+    <div style="font-size:12px;color:var(--text2)">${fDate(r.created_at)} · <strong>${fMoney(r.total)}</strong></div>
+    <div class="list-card-actions">
+      <button class="btn btn-secondary btn-sm" onclick="imprimirRemito('${r.id}')">🖨 Imprimir</button>
+    </div>
+  </div>`).join('');
+}
+
+async function generarRemito(pedidoId){
+  try{
+    const [p]=await db('pedidos','GET',null,`?id=eq.${pedidoId}&select=*`);
+    const its=await db('pedido_items','GET',null,`?pedido_id=eq.${pedidoId}`)||[];
+    if(!its.length){toast('El pedido no tiene ítems','error');return;}
+    const [rem]=await db('remitos','POST',{pedido_id:pedidoId,cliente_id:p.cliente_id,usuario_id:user.id,estado:'emitido',observaciones:`Generado desde Pedido #${p.numero}`});
+    for(const it of its){
+      await db('remito_items','POST',{remito_id:rem.id,producto_id:it.producto_id||null,codigo_producto:it.codigo_producto,descripcion_producto:it.descripcion_producto,cantidad:it.cantidad,precio_unitario:it.precio_unitario});
+    }
+    toast(`Remito R-${String(rem.numero).padStart(4,'0')} generado ✅`);
+    setTimeout(()=>imprimirRemito(rem.id),400);
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+async function imprimirRemito(id){
+  try{
+    const [r]=await db('remitos','GET',null,`?id=eq.${id}&select=*,clientes(nombre,cuit,email,telefono,direccion)`);
+    const its=await db('remito_items','GET',null,`?remito_id=eq.${id}`)||[];
+    const numStr='R-'+String(r.numero).padStart(4,'0');
+    const w=window.open('','_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>Remito ${numStr}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>body{font-family:Arial,sans-serif;padding:24px;max-width:680px;margin:0 auto;color:#1e293b;font-size:14px}
+    .header{display:flex;justify-content:space-between;border-bottom:3px solid #8b5cf6;padding-bottom:14px;margin-bottom:18px}
+    .logo{font-size:20px;font-weight:800;color:#2563eb}.doc-type{font-size:12px;font-weight:700;color:#8b5cf6;text-transform:uppercase;letter-spacing:1px}
+    .num{font-size:26px;font-weight:800;color:#8b5cf6;text-align:right}
+    .info{background:#f4f6fa;padding:14px;border-radius:8px;margin-bottom:16px}
+    .item{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e0e6f0}
+    .code{font-family:monospace;font-size:11px;color:#0ea5e9;font-weight:700}
+    .total{text-align:right;margin-top:16px;padding-top:14px;border-top:3px solid #8b5cf6}
+    .total-val{font-size:24px;font-weight:800;color:#8b5cf6}
+    .firma{margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:32px}
+    .firma-box{border-top:1px solid #94a3b8;padding-top:8px;font-size:11px;color:#64748b;text-align:center}
+    .sin-validez{background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px 12px;font-size:11px;color:#92400e;margin-bottom:14px;text-align:center}
+    .print-btn{display:block;width:100%;margin-top:24px;padding:14px;background:#8b5cf6;color:white;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer}
+    @media print{.print-btn,.sin-validez{display:none}}</style></head><body>
+    <div class="header">
+      <div><div class="logo">📦 Dorisol</div><div class="doc-type">Remito de entrega</div></div>
+      <div><div class="doc-type">REMITO</div><div class="num">${numStr}</div><div style="font-size:12px;color:#64748b">${fDate(r.created_at)}</div></div>
+    </div>
+    <div class="sin-validez">⚠️ Documento sin validez fiscal — uso interno</div>
+    <div class="info"><strong style="font-size:15px">${r.clientes?.nombre}</strong><br>
+    CUIT: ${r.clientes?.cuit||'—'}<br>${r.clientes?.email?r.clientes.email+'<br>':''}${r.clientes?.telefono||''}${r.clientes?.direccion?'<br>'+r.clientes.direccion:''}</div>
+    ${its.map(i=>`<div class="item"><div><div class="code">${i.codigo_producto}</div><div style="font-weight:600">${i.descripcion_producto}</div><div style="font-size:12px;color:#64748b">${i.cantidad} ${i.precio_unitario>0?'× '+fMoney(i.precio_unitario):''}</div></div><div style="font-weight:700">${i.precio_unitario>0?fMoney(i.subtotal):i.cantidad+' u.'}</div></div>`).join('')}
+    <div class="total"><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Total</div><div class="total-val">${fMoney(r.total)}</div></div>
+    <div class="firma"><div class="firma-box">Firma y aclaración receptor</div><div class="firma-box">Firma y aclaración entregador</div></div>
+    <button class="print-btn" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+    </body></html>`);
+    w.document.close();
+  }catch(e){toast('Error al imprimir remito','error');}
+}
+
+// ============================================================
+// CUENTA CORRIENTE
+// ============================================================
+let saldos=[];
+async function cargarCC(){
+  try{
+    saldos=await db('saldos_clientes','GET',null,'?order=nombre')||[];
+    if(user.rol==='cliente'&&user.cliente_id) saldos=saldos.filter(s=>s.cliente_id===user.cliente_id);
+    renderCC(saldos);
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+function filtrarCC(){
+  const q=(document.getElementById('cc-search').value||'').toLowerCase();
+  renderCC(saldos.filter(s=>(s.nombre||'').toLowerCase().includes(q)||(s.cuit||'').includes(q)));
+}
+function renderCC(list){
+  const el=document.getElementById('cc-lista');
+  if(!list.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">💰</div><div class="empty-text">Sin movimientos</div></div>`;return;}
+  const puede=['admin','vendedor'].includes(user.rol);
+  el.innerHTML=list.map(s=>{
+    const saldo=parseFloat(s.saldo)||0;
+    const col=saldo>0?'var(--danger)':saldo<0?'var(--purple,#8b5cf6)':'var(--success)';
+    const lbl=saldo>0?'DEBE':saldo<0?'A FAVOR':'AL DÍA';
+    return`<div class="list-card">
+      <div class="list-card-top">
+        <div><div style="font-size:14px;font-weight:700">${s.nombre}</div><div style="font-size:11px;color:var(--text2)">CUIT: ${s.cuit||'—'}</div></div>
+        <div style="text-align:right"><div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:800;color:${col}">${fMoney(Math.abs(saldo))}</div><div style="font-size:10px;font-weight:700;color:${col}">${lbl}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">Cargos: ${fMoney(s.total_cargos)} · Pagos: ${fMoney(s.total_pagos)}</div>
+      <div class="list-card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="verCC('${s.cliente_id}','${s.nombre.replace(/'/g,"\\'").replace(/"/g,"&quot;")}')">Ver movimientos</button>
+        ${puede?`<button class="btn btn-success btn-sm" onclick="modalPago('${s.cliente_id}','${s.nombre.replace(/'/g,"\\'").replace(/"/g,"&quot;")}',${saldo})">💵 Pago</button>`:''}
+        ${puede?`<button class="btn btn-warning btn-sm" onclick="modalCargo('${s.cliente_id}','${s.nombre.replace(/'/g,"\\'").replace(/"/g,"&quot;")}')">＋ Cargo</button>`:''}
+      </div>
+    </div>`;}).join('');
+}
+
+async function verCC(cid,nombre){
+  try{
+    const movs=await db('cuenta_corriente','GET',null,`?cliente_id=eq.${cid}&order=created_at.desc`)||[];
+    let saldoAcum=0;
+    document.getElementById('mcc-title').textContent=nombre;
+    const rows=movs.map(m=>{
+      const esD=['cargo','nota_debito'].includes(m.tipo);
+      saldoAcum+=esD?m.monto:-m.monto;
+      return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);gap:8px">
+        <div><div style="font-size:13px;font-weight:600">${m.concepto}</div>
+        <div style="font-size:11px;color:var(--text2)">${fDate(m.created_at)}${m.observaciones?' · '+m.observaciones:''}</div>
+        <span class="badge badge-${m.tipo}" style="margin-top:4px">${m.tipo.replace('_',' ')}</span></div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:${esD?'var(--danger)':'var(--success)'}">
+          ${esD?'+':'-'} ${fMoney(m.monto)}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('mcc-body').innerHTML=`
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:14px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:var(--text2)">SALDO ACTUAL</div>
+        <div style="font-size:28px;font-weight:800;color:${saldoAcum>0?'var(--danger)':'var(--success)'}">${fMoney(Math.abs(saldoAcum))}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--text2)">${saldoAcum>0?'Deuda pendiente':'Sin deuda'}</div>
+      </div>
+      ${rows||'<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Sin movimientos</div></div>'}`;
+    openModal('modal-cc');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+function modalPago(cid,nombre,saldoActual){
+  document.getElementById('mpago-body').innerHTML=`
+    <div style="background:var(--success-l);border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px">
+      <strong>${nombre}</strong> — Deuda: <strong style="color:var(--danger)">${fMoney(Math.max(0,parseFloat(saldoActual)||0))}</strong>
+    </div>
+    <div class="fg"><label>Monto recibido</label><input id="pago-monto" type="number" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+    <div class="fg"><label>Forma de pago</label><select id="pago-forma"><option>Efectivo</option><option>Transferencia</option><option>Cheque</option><option>Otro</option></select></div>
+    <div class="fg"><label>Observaciones</label><input id="pago-obs" placeholder="Nro. comprobante, banco, etc."></div>
+    <button class="btn btn-success btn-full" onclick="registrarPago('${cid}')">✅ Confirmar pago</button>`;
+  openModal('modal-pago');
+}
+
+async function registrarPago(cid){
+  const monto=parseFloat(document.getElementById('pago-monto').value)||0;
+  const forma=document.getElementById('pago-forma').value;
+  const obs=document.getElementById('pago-obs').value;
+  if(monto<=0){toast('Ingresá un monto válido','error');return;}
+  try{
+    await db('cuenta_corriente','POST',{cliente_id:cid,tipo:'pago',concepto:'Pago — '+forma,monto,usuario_id:user.id,observaciones:obs||null});
+    toast('Pago registrado ✅');closeModal('modal-pago');cargarCC();
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+function modalCargo(cid,nombre){
+  document.getElementById('mpago-body').innerHTML=`
+    <div style="background:var(--warning-l);border:1px solid #fde68a;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px">Cargo manual para <strong>${nombre}</strong></div>
+    <div class="fg"><label>Concepto</label><input id="cargo-con" placeholder="Ej: Flete, entrega adicional..."></div>
+    <div class="fg"><label>Monto</label><input id="cargo-monto" type="number" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+    <div class="fg"><label>Observaciones</label><input id="cargo-obs" placeholder="Opcional..."></div>
+    <button class="btn btn-warning btn-full" onclick="registrarCargo('${cid}')">Agregar cargo</button>`;
+  openModal('modal-pago');
+}
+
+async function registrarCargo(cid){
+  const con=document.getElementById('cargo-con').value.trim();
+  const monto=parseFloat(document.getElementById('cargo-monto').value)||0;
+  const obs=document.getElementById('cargo-obs').value;
+  if(!con||monto<=0){toast('Completá concepto y monto','error');return;}
+  try{
+    await db('cuenta_corriente','POST',{cliente_id:cid,tipo:'cargo',concepto:con,monto,usuario_id:user.id,observaciones:obs||null});
+    toast('Cargo registrado ✅');closeModal('modal-pago');cargarCC();
+  }catch(e){toast('Error: '+e.message,'error');}
 }
 
 // ======================== MODALES ========================
