@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dorisol — Pedidos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f4f6fa;
+  --surface: #ffffff;
+  --surface2: #f0f3f8;
+  --border: #e0e6f0;
+  --accent: #2563eb;
+  --accent-l: #eff4ff;
+  --accent2: #0ea5e9;
+  --danger: #ef4444;
+  --danger-l: #fef2f2;
+  --success: #22c55e;
+  --success-l: #f0fdf4;
+  --warning: #f59e0b;
+  --warning-l: #fffbeb;
+  --purple: #8b5cf6;
+  --purple-l: #ede9fe;
+  --text: #1e293b;
+  --text2: #64748b;
+  --text3: #94a3b8;
+  --nav-h: 60px;
+  --topbar-h: 56px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ============ LOGIN ============ */
+#login-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #e8f0fe 0%, #f4f6fa 60%, #e0f2fe 100%);
+}
+.login-box {
+  background: white;
+  border-radius: 20px;
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 60px rgba(37,99,235,0.12);
+}
+.login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.login-logo-icon {
+  width: 40px; height: 40px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.login-logo-text { font-size: 24px; font-weight: 800; color: var(--accent); }
+.login-sub { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+
+/* ============ INPUTS ============ */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 5px; }
+input, select, textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 16px; /* 16px prevents iOS zoom */
+  font-family: 'Nunito', sans-serif;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+input:focus, select:focus { border-color: var(--accent); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+input:disabled { opacity: 0.6; }
+input[type="number"] { font-family: 'DM Mono', monospace; }
+
+/* ============ BUTTONS ============ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 18px;
+  border-radius: 10px; border: none; cursor: pointer;
+  font-size: 14px; font-weight: 700;
+  font-family: 'Nunito', sans-serif;
+  transition: all 0.15s;
+  white-space: nowrap;
+  min-height: 44px; /* touch target */
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:active { background: #1d4ed8; }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); }
+.btn-secondary:active { background: var(--surface2); }
+.btn-danger { background: var(--danger); color: white; }
+.btn-success { background: var(--success); color: white; }
+.btn-sm { padding: 8px 12px; font-size: 12px; min-height: 36px; border-radius: 8px; }
+.btn-full { width: 100%; }
+
+/* ============ APP LAYOUT ============ */
+#app { display: none; min-height: 100vh; min-height: 100dvh; }
+
+/* TOPBAR */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--topbar-h);
+  background: white;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.topbar-menu-btn {
+  background: none; border: none; cursor: pointer;
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--text2);
+  flex-shrink: 0;
+}
+.topbar-logo { font-size: 18px; font-weight: 800; color: var(--accent); flex: 1; }
+.topbar-user {
+  font-size: 11px; color: var(--text2); text-align: right;
+  line-height: 1.3;
+}
+.topbar-user strong { display: block; color: var(--text); font-size: 12px; }
+
+/* SIDEBAR / DRAWER */
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.4);
+}
+.sidebar-overlay.open { display: block; }
+.sidebar {
+  position: fixed; top: 0; left: -280px; bottom: 0; z-index: 201;
+  width: 260px;
+  background: white;
+  box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+  transition: left 0.25s ease;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+.sidebar.open { left: 0; }
+.sidebar-header {
+  padding: 20px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sidebar-logo { display: flex; align-items: center; gap: 8px; }
+.sidebar-logo-icon {
+  width: 32px; height: 32px; background: var(--accent);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.sidebar-logo-text { font-size: 17px; font-weight: 800; color: var(--accent); }
+.sidebar-close { background: none; border: none; font-size: 18px; color: var(--text2); cursor: pointer; padding: 4px; }
+.sidebar-user-block {
+  padding: 12px 16px; background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-user-name { font-weight: 700; font-size: 14px; }
+.sidebar-user-role { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.sidebar-nav { flex: 1; padding: 8px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 12px; border-radius: 10px; cursor: pointer;
+  font-size: 14px; font-weight: 600; color: var(--text2);
+  margin-bottom: 2px; transition: all 0.15s;
+  min-height: 48px;
+}
+.nav-item:active { background: var(--surface2); }
+.nav-item.active { background: var(--accent-l); color: var(--accent); }
+.nav-item .nav-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+
+/* MAIN */
+.main-content {
+  padding-top: calc(var(--topbar-h) + 12px);
+  padding-bottom: 24px;
+  padding-left: 16px;
+  padding-right: 16px;
+  min-height: 100vh;
+}
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+.page-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; gap: 10px;
+}
+.page-title { font-size: 20px; font-weight: 800; }
+.page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* CARD */
+.card {
+  background: white; border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: 14px;
+}
+
+/* STATS */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 10px; margin-bottom: 14px;
+}
+.stat-card {
+  background: white; border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.stat-icon { font-size: 20px; margin-bottom: 6px; }
+.stat-value { font-size: 26px; font-weight: 800; line-height: 1; }
+.stat-label { font-size: 11px; font-weight: 700; color: var(--text2); margin-top: 3px; }
+
+/* BADGE */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.badge::before { content:'●'; font-size:8px; }
+.badge-recibido { background:#e0f2fe; color:#0284c7; }
+.badge-preparando { background:#fef3c7; color:#d97706; }
+.badge-para_despachar { background:#ede9fe; color:#7c3aed; }
+.badge-entregado { background:#dcfce7; color:#16a34a; }
+.badge-cancelado { background:#fee2e2; color:#dc2626; }
+
+/* TABLE — mobile scrollable */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; min-width: 480px; }
+th {
+  text-align: left; padding: 9px 12px;
+  font-size: 10px; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  border-bottom: 1.5px solid var(--border);
+  background: var(--surface2); white-space: nowrap;
+}
+td { padding: 11px 12px; font-size: 13px; border-bottom: 1px solid var(--border); font-weight: 500; }
+tr:last-child td { border-bottom: none; }
+
+/* PEDIDO LIST — mobile card style */
+.pedido-card {
+  background: white; border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.pedido-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.pedido-card-num { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent); }
+.pedido-card-cliente { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.pedido-card-meta { font-size: 12px; color: var(--text2); margin-bottom: 10px; }
+.pedido-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* NUEVO PEDIDO */
+.pedido-form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px; }
+
+/* BUSCADOR */
+.buscador-wrap {
+  background: var(--accent-l); border: 1px solid #bfdbfe;
+  border-radius: 12px; padding: 14px;
+  margin-bottom: 14px;
+  position: relative;
+}
+.buscador-label { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+#dropdown-productos {
+  display: none; position: absolute; left: 14px; right: 14px;
+  background: white; border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  max-height: 50vh; overflow-y: auto; z-index: 50;
+  margin-top: 4px;
+}
+.dp-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  min-height: 52px;
+}
+.dp-item:last-child { border-bottom: none; }
+.dp-item:active { background: var(--surface2); }
+.dp-sku { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent); min-width: 68px; flex-shrink: 0; }
+.dp-nombre { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+.dp-precio { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; color: var(--success); white-space: nowrap; }
+
+/* ITEMS DE PEDIDO — mobile cards */
+.item-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px; margin-bottom: 8px;
+  position: relative;
+}
+.item-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.item-sku { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; color: var(--accent2); background: white; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); }
+.item-nombre { flex: 1; font-size: 13px; font-weight: 600; }
+.item-card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.item-field label { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; display: block; }
+.item-field input { font-size: 15px; padding: 10px 12px; }
+.item-delete {
+  position: absolute; top: 10px; right: 10px;
+  background: var(--danger-l); border: 1px solid #fecaca; color: var(--danger);
+  border-radius: 8px; padding: 4px 8px; font-size: 12px; font-weight: 700;
+  cursor: pointer; min-height: 28px;
+}
+
+/* TOTAL */
+.pedido-total {
+  background: var(--accent-l); border: 1px solid #bfdbfe;
+  border-radius: 12px; padding: 16px;
+  text-align: right; margin: 14px 0;
+}
+.pedido-total-label { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; }
+.pedido-total-amount { font-size: 28px; font-weight: 800; color: var(--accent); }
+
+/* KANBAN — stack en mobile */
+.kanban-board { display: flex; flex-direction: column; gap: 12px; }
+.kanban-col {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px;
+}
+.kanban-col-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.kanban-col-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; }
+.kanban-count { background: white; border: 1px solid var(--border); color: var(--text2); border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.kanban-card {
+  background: white; border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 12px; margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.kanban-card-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); font-weight: 700; margin-bottom: 3px; }
+.kanban-card-client { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+.kanban-card-total { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+.kanban-card-actions { margin-top: 10px; }
+
+/* MODAL */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(15,23,42,0.5);
+  align-items: flex-end; /* mobile: bottom sheet */
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: white; border-radius: 20px 20px 0 0;
+  padding: 24px 20px 32px;
+  width: 100%; max-width: 600px;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-title { font-size: 18px; font-weight: 800; }
+.modal-close { background: var(--surface2); border: none; border-radius: 8px; padding: 6px 10px; font-size: 14px; cursor: pointer; color: var(--text2); min-height: 36px; }
+
+/* TOAST */
+#toast {
+  position: fixed; bottom: 80px; left: 16px; right: 16px;
+  background: var(--text); color: white;
+  border-radius: 12px; padding: 14px 18px;
+  font-size: 13px; font-weight: 600;
+  z-index: 9999;
+  transform: translateY(120px); opacity: 0; transition: all 0.3s;
+  text-align: center;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.success { background: var(--success); }
+#toast.error { background: var(--danger); }
+
+/* TAGS ROL */
+.tag-rol { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 6px; }
+.tag-admin { background: var(--accent-l); color: var(--accent); }
+.tag-vendedor { background: #e0f2fe; color: #0284c7; }
+.tag-cliente { background: var(--purple-l); color: var(--purple); }
+.tag-deposito { background: var(--success-l); color: var(--success); }
+
+/* EMPTY STATE */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text2); }
+.empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.4; }
+.empty-text { font-size: 14px; font-weight: 600; }
+
+/* INFO BOX */
+.info-box {
+  background: var(--accent-l); border: 1px solid #bfdbfe;
+  border-radius: 10px; padding: 12px 14px;
+  font-size: 12px; color: #1d4ed8; font-weight: 600; margin-bottom: 16px;
+}
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+mark { background: #fef9c3; color: var(--text); border-radius: 2px; padding: 0 1px; }
+
+/* SEARCH BAR */
+.search-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.search-row input { flex: 1; font-size: 15px; }
+.search-row select { width: 140px; font-size: 14px; flex-shrink: 0; }
+
+/* DESKTOP overrides — tablet + */
+@media (min-width: 768px) {
+  .main-content { padding-left: 24px; padding-right: 24px; max-width: 900px; margin: 0 auto; }
+  .stats-grid { grid-template-columns: repeat(4, 1fr); }
+  .pedido-form-grid { grid-template-columns: 1fr 1fr; }
+  .kanban-board { flex-direction: row; overflow-x: auto; }
+  .kanban-col { min-width: 220px; flex: 1; }
+  .modal { border-radius: 20px; margin: auto; }
+  .modal-overlay { align-items: center; }
+  .modal-handle { display: none; }
+  #dropdown-productos { position: absolute; }
+  table { min-width: unset; }
+}
+
+@media (min-width: 1024px) {
+  :root { --topbar-h: 60px; }
+  .main-content { padding-left: 32px; padding-right: 32px; }
+}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">📦</div>
+      <div class="login-logo-text">Dorisol</div>
+    </div>
+    <div class="login-sub">Sistema de gestión de pedidos</div>
+
+    <div class="form-group">
+      <label>Email / CUIT</label>
+      <input type="text" id="login-email" placeholder="usuario@empresa.com" autocomplete="username" value="admin@distribuidora.com">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" value="admin123">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Ingresar →</button>
+
+    <hr class="divider">
+    <div class="info-box">
+      💡 <strong>Usuarios demo:</strong><br>
+      admin@distribuidora.com / admin123<br>
+      vendedor@distribuidora.com / vendedor123<br>
+      deposito@distribuidora.com / deposito123<br>
+      elsol@mail.com / 20123456789
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- SIDEBAR OVERLAY -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR DRAWER -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">📦</div>
+        <div class="sidebar-logo-text">Dorisol</div>
+      </div>
+      <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+    </div>
+    <div class="sidebar-user-block">
+      <div class="sidebar-user-name" id="sb-nombre">—</div>
+      <div class="sidebar-user-role" id="sb-rol">—</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-secondary btn-full btn-sm" onclick="doLogout()">← Salir</button>
+    </div>
+  </div>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="topbar-menu-btn" onclick="openSidebar()">☰</button>
+    <div class="topbar-logo">📦 Dorisol</div>
+    <div class="topbar-user">
+      <strong id="tb-nombre">—</strong>
+      <span id="tb-rol">—</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <button class="btn btn-primary btn-sm" onclick="navTo('nuevo-pedido')">＋ Pedido</button>
+      </div>
+      <div class="stats-grid" id="dash-stats"></div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">Últimos pedidos</div>
+        <div id="dash-recientes"></div>
+      </div>
+    </div>
+
+    <!-- NUEVO PEDIDO -->
+    <div class="page" id="page-nuevo-pedido">
+      <div class="page-header">
+        <div class="page-title">Nuevo Pedido</div>
+      </div>
+      <div class="card">
+        <div class="pedido-form-grid">
+          <div class="form-group" id="cliente-wrap">
+            <label>Cliente</label>
+            <select id="pedido-cliente"></select>
+          </div>
+          <div class="form-group">
+            <label>Observaciones</label>
+            <input type="text" id="pedido-obs" placeholder="Indicaciones opcionales...">
+          </div>
+        </div>
+
+        <!-- BUSCADOR -->
+        <div class="buscador-wrap">
+          <div class="buscador-label">🔍 Buscar producto</div>
+          <input type="text" id="buscador-producto"
+            placeholder="Código (ALFA001) o nombre (alfajor, oreo...)"
+            oninput="buscarEnCatalogo(this.value)"
+            autocomplete="off" autocorrect="off" spellcheck="false">
+          <div id="dropdown-productos"></div>
+        </div>
+
+        <!-- ACCIONES ITEMS -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text2)" id="items-count">Sin productos</div>
+          <div style="display:flex;gap:8px;">
+            <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+              📂 Excel
+              <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarPedidoXLS(this)">
+            </label>
+            <button class="btn btn-secondary btn-sm" onclick="limpiarPedido()">🗑</button>
+          </div>
+        </div>
+
+        <div id="items-container"></div>
+
+        <div class="pedido-total">
+          <div class="pedido-total-label">Total del pedido</div>
+          <div class="pedido-total-amount" id="pedido-total">$0,00</div>
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="guardarPedido()" style="font-size:16px;padding:14px;">
+          ✅ Confirmar pedido
+        </button>
+      </div>
+    </div>
+
+    <!-- PEDIDOS -->
+    <div class="page" id="page-pedidos">
+      <div class="page-header">
+        <div class="page-title">Pedidos</div>
+        <button class="btn btn-primary btn-sm" onclick="navTo('nuevo-pedido')">＋ Nuevo</button>
+      </div>
+      <div class="card" style="padding:12px;">
+        <div class="search-row">
+          <input type="text" id="pedidos-search" placeholder="🔍 Número o cliente..." oninput="filtrarPedidos()">
+          <select id="pedidos-filtro" onchange="filtrarPedidos()" style="width:130px;font-size:13px;">
+            <option value="">Todos</option>
+            <option value="recibido">Recibido</option>
+            <option value="preparando">Preparando</option>
+            <option value="para_despachar">A despachar</option>
+            <option value="entregado">Entregado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+      </div>
+      <div id="pedidos-lista"></div>
+    </div>
+
+    <!-- PANEL KANBAN -->
+    <div class="page" id="page-panel">
+      <div class="page-header">
+        <div class="page-title">Panel de Estados</div>
+        <button class="btn btn-secondary btn-sm" onclick="cargarPanel()">🔄</button>
+      </div>
+      <div class="kanban-board" id="kanban-board"></div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div class="page" id="page-productos">
+      <div class="page-header">
+        <div class="page-title">Productos</div>
+        <div class="page-actions">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+            📥 Excel
+            <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarProductos(this)">
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="modalProducto()">＋</button>
+        </div>
+      </div>
+      <div class="card" style="padding:12px;">
+        <input type="text" id="prod-search" placeholder="🔍 Código o nombre..." oninput="filtrarProductos()" style="margin-bottom:0">
+      </div>
+      <div id="productos-lista"></div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div class="page" id="page-clientes">
+      <div class="page-header">
+        <div class="page-title">Clientes</div>
+        <div class="page-actions">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+            📥 Excel
+            <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarClientes(this)">
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="modalCliente()">＋</button>
+        </div>
+      </div>
+      <div id="clientes-lista"></div>
+    </div>
+
+    <!-- USUARIOS -->
+    <div class="page" id="page-usuarios">
+      <div class="page-header">
+        <div class="page-title">Usuarios</div>
+        <button class="btn btn-primary btn-sm" onclick="modalUsuario()">＋ Nuevo</button>
+      </div>
+      <div id="usuarios-lista"></div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /app -->
+
+<!-- MODAL PEDIDO -->
+<div class="modal-overlay" id="modal-pedido">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="mp-title">Pedido</div>
+      <button class="modal-close" onclick="closeModal('modal-pedido')">✕</button>
+    </div>
+    <div id="mp-body"></div>
+  </div>
+</div>
+
+<!-- MODAL PRODUCTO -->
+<div class="modal-overlay" id="modal-producto">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="mprod-title">Producto</div>
+      <button class="modal-close" onclick="closeModal('modal-producto')">✕</button>
+    </div>
+    <div id="mprod-body"></div>
+  </div>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="mcli-title">Cliente</div>
+      <button class="modal-close" onclick="closeModal('modal-cliente')">✕</button>
+    </div>
+    <div id="mcli-body"></div>
+  </div>
+</div>
+
+<!-- MODAL USUARIO -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">Nuevo Usuario</div>
+      <button class="modal-close" onclick="closeModal('modal-usuario')">✕</button>
+    </div>
+    <div id="musu-body"></div>
+  </div>
+</div>
+
+<script>
+// ======================== SUPABASE ========================
+const SU = 'https://zqvrxcrizyulakubfbux.supabase.co';
+const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxdnJ4Y3Jpenl1bGFrdWJmYnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1OTE0ODIsImV4cCI6MjA5MTE2NzQ4Mn0.2aHp2jK7eZJcvPloEokzOkkFTuI1SFlJfRA7WWXuG8o';
+
+async function db(table, method='GET', body=null, query='') {
+  const r = await fetch(`${SU}/rest/v1/${table}${query}`, {
+    method,
+    headers: {
+      'apikey': SK, 'Authorization': `Bearer ${SK}`,
+      'Content-Type': 'application/json',
+      'Prefer': method==='POST'?'return=representation':method==='PATCH'?'return=representation':''
+    },
+    body: body ? JSON.stringify(body) : null
+  });
+  if (!r.ok) { const e=await r.json().catch(()=>({})); throw new Error(e.message||`HTTP ${r.status}`); }
+  if (method==='DELETE'||r.status===204) return true;
+  return r.json();
+}
+
+// ======================== STATE ========================
+let user=null, pedidos=[], productos=[], clientes=[], items=[];
+
+// ======================== AUTH ========================
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value.trim();
+  try {
+    const res = await db('sys_usuarios','GET',null,
+      `?select=*&email=eq.${encodeURIComponent(email)}&password_hash=eq.${encodeURIComponent(pass)}&activo=eq.true`);
+    if (!res?.length) { toast('Credenciales incorrectas','error'); return; }
+    user = res[0];
+    if (user.rol==='cliente' && user.cliente_id) {
+      const c = await db('clientes','GET',null,`?id=eq.${user.cliente_id}`);
+      user.clienteData = c?.[0];
+    }
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    startApp();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+function doLogout() {
+  user=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+// ======================== APP ========================
+const MENUS = {
+  admin:    [{id:'dashboard',label:'Dashboard',icon:'📊'},{id:'nuevo-pedido',label:'Nuevo Pedido',icon:'📝'},{id:'pedidos',label:'Pedidos',icon:'📦'},{id:'panel',label:'Panel Estados',icon:'🗂'},{id:'productos',label:'Productos',icon:'🏷'},{id:'clientes',label:'Clientes',icon:'👥'},{id:'usuarios',label:'Usuarios',icon:'🔑'}],
+  vendedor: [{id:'dashboard',label:'Dashboard',icon:'📊'},{id:'nuevo-pedido',label:'Nuevo Pedido',icon:'📝'},{id:'pedidos',label:'Pedidos',icon:'📦'},{id:'productos',label:'Productos',icon:'🏷'},{id:'clientes',label:'Clientes',icon:'👥'}],
+  cliente:  [{id:'nuevo-pedido',label:'Nuevo Pedido',icon:'📝'},{id:'pedidos',label:'Mis Pedidos',icon:'📦'}],
+  deposito: [{id:'panel',label:'Panel Estados',icon:'🗂'},{id:'pedidos',label:'Pedidos',icon:'📦'}],
+};
+
+function startApp() {
+  document.getElementById('sb-nombre').textContent = user.nombre;
+  document.getElementById('sb-rol').textContent = user.rol;
+  document.getElementById('tb-nombre').textContent = user.nombre;
+  document.getElementById('tb-rol').textContent = user.rol;
+  const menu = MENUS[user.rol]||[];
+  document.getElementById('sidebar-nav').innerHTML = menu.map(m=>
+    `<div class="nav-item" id="nav-${m.id}" onclick="navTo('${m.id}');closeSidebar()">
+      <span class="nav-icon">${m.icon}</span>${m.label}
+    </div>`
+  ).join('');
+  const first = menu[0]?.id || 'dashboard';
+  navTo(first);
+}
+
+function navTo(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page)?.classList.add('active');
+  document.getElementById('nav-'+page)?.classList.add('active');
+  if (page==='dashboard')   cargarDash();
+  if (page==='pedidos')     cargarPedidos();
+  if (page==='panel')       cargarPanel();
+  if (page==='productos')   cargarProductos();
+  if (page==='clientes')    cargarClientes();
+  if (page==='usuarios')    cargarUsuarios();
+  if (page==='nuevo-pedido') initPedido();
+  window.scrollTo(0,0);
+}
+
+// SIDEBAR
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+// ======================== TOAST ========================
+function toast(msg, type='success') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`show ${type}`;
+  setTimeout(()=>t.className='',3000);
+}
+
+// ======================== DASHBOARD ========================
+async function cargarDash() {
+  try {
+    pedidos = await db('pedidos','GET',null,'?select=*,clientes(nombre)&order=created_at.desc&limit=50')||[];
+    const cnt = {recibido:0,preparando:0,para_despachar:0,entregado:0};
+    pedidos.forEach(p=>{ if(cnt[p.estado]!==undefined) cnt[p.estado]++; });
+    document.getElementById('dash-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-icon">📥</div><div class="stat-value" style="color:#0284c7">${cnt.recibido}</div><div class="stat-label">Recibidos</div></div>
+      <div class="stat-card"><div class="stat-icon">⚙️</div><div class="stat-value" style="color:#d97706">${cnt.preparando}</div><div class="stat-label">Preparando</div></div>
+      <div class="stat-card"><div class="stat-icon">🚚</div><div class="stat-value" style="color:#7c3aed">${cnt.para_despachar}</div><div class="stat-label">A despachar</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" style="color:#16a34a">${cnt.entregado}</div><div class="stat-label">Entregados</div></div>`;
+    document.getElementById('dash-recientes').innerHTML = renderPedidoCards(pedidos.slice(0,5));
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ======================== PEDIDOS ========================
+async function cargarPedidos() {
+  let q='?select=*,clientes(nombre,cuit)&order=created_at.desc';
+  if (user.rol==='cliente'&&user.cliente_id) q+=`&cliente_id=eq.${user.cliente_id}`;
+  pedidos = await db('pedidos','GET',null,q)||[];
+  renderListaPedidos(pedidos);
+}
+
+function filtrarPedidos() {
+  const q=(document.getElementById('pedidos-search').value||'').toLowerCase();
+  const est=document.getElementById('pedidos-filtro').value;
+  const f=pedidos.filter(p=>
+    (!q||String(p.numero).includes(q)||(p.clientes?.nombre||'').toLowerCase().includes(q))&&
+    (!est||p.estado===est));
+  renderListaPedidos(f);
+}
+
+function renderListaPedidos(list) {
+  if (!list.length) {
+    document.getElementById('pedidos-lista').innerHTML=`<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Sin pedidos</div></div>`;
+    return;
+  }
+  document.getElementById('pedidos-lista').innerHTML = renderPedidoCards(list);
+}
+
+function renderPedidoCards(list) {
+  const puede = ['admin','vendedor','deposito'].includes(user.rol);
+  return list.map(p=>`
+    <div class="pedido-card">
+      <div class="pedido-card-top">
+        <span class="pedido-card-num">#${p.numero}</span>
+        <span class="badge badge-${p.estado}">${labelEst(p.estado)}</span>
+      </div>
+      <div class="pedido-card-cliente">${p.clientes?.nombre||'—'}</div>
+      <div class="pedido-card-meta">${fDate(p.created_at)} · ${fMoney(p.total)}</div>
+      <div class="pedido-card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="verPedido('${p.id}')">Ver detalle</button>
+        ${puede?`<button class="btn btn-secondary btn-sm" onclick="pantallaEstado('${p.id}','${p.estado}')">Cambiar estado</button>`:''}
+        <button class="btn btn-secondary btn-sm" onclick="imprimirPedido('${p.id}')">🖨 Imprimir</button>
+      </div>
+    </div>`).join('');
+}
+
+async function verPedido(id) {
+  try {
+    const [p] = await db('pedidos','GET',null,`?id=eq.${id}&select=*,clientes(nombre,cuit,email,telefono)`);
+    const its = await db('pedido_items','GET',null,`?pedido_id=eq.${id}`)||[];
+    document.getElementById('mp-title').textContent = `Pedido #${p.numero}`;
+    document.getElementById('mp-body').innerHTML = `
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:2px;">CLIENTE</div>
+        <div style="font-weight:700;font-size:15px">${p.clientes?.nombre}</div>
+        <div style="font-size:12px;color:var(--text2)">CUIT: ${p.clientes?.cuit||'—'}</div>
+        <div style="font-size:12px;color:var(--text2)">${p.clientes?.email||''}</div>
+        <div style="margin-top:8px"><span class="badge badge-${p.estado}">${labelEst(p.estado)}</span></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px">${fDate(p.created_at)}</div>
+      </div>
+      ${p.observaciones?`<div style="background:var(--warning-l);border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px;">📝 ${p.observaciones}</div>`:''}
+      ${its.map(i=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);font-weight:700">${i.codigo_producto}</div>
+            <div style="font-size:13px;font-weight:600">${i.descripcion_producto}</div>
+            <div style="font-size:12px;color:var(--text2)">${i.cantidad} × ${fMoney(i.precio_unitario)}</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--text)">${fMoney(i.subtotal)}</div>
+        </div>`).join('')}
+      <div style="text-align:right;padding:14px 0 0;">
+        <div style="font-size:11px;font-weight:700;color:var(--text2)">TOTAL</div>
+        <div style="font-size:24px;font-weight:800;color:var(--accent)">${fMoney(p.total)}</div>
+      </div>`;
+    openModal('modal-pedido');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+const ESTADOS=['recibido','preparando','para_despachar','entregado'];
+
+function pantallaEstado(id, actual) {
+  const idx=ESTADOS.indexOf(actual);
+  const sig=ESTADOS.slice(idx+1).concat(['cancelado']);
+  document.getElementById('mp-title').textContent='Cambiar estado';
+  document.getElementById('mp-body').innerHTML=`
+    <p style="color:var(--text2);font-weight:600;margin-bottom:14px;">Actual: <span class="badge badge-${actual}">${labelEst(actual)}</span></p>
+    <p style="font-size:13px;font-weight:700;margin-bottom:12px;">Mover a:</p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${sig.map(e=>`<button class="btn ${e==='cancelado'?'btn-danger':'btn-primary'} btn-full" onclick="aplicarEstado('${id}','${e}');closeModal('modal-pedido')">${labelEst(e)}</button>`).join('')}
+    </div>`;
+  openModal('modal-pedido');
+}
+
+async function aplicarEstado(id,est) {
+  try {
+    await db('pedidos','PATCH',{estado:est},`?id=eq.${id}`);
+    toast(`Estado: ${labelEst(est)}`);
+    cargarPedidos(); cargarPanel();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ======================== PANEL KANBAN ========================
+async function cargarPanel() {
+  try {
+    const all = await db('pedidos','GET',null,'?select=*,clientes(nombre)&order=created_at.desc&estado=neq.cancelado')||[];
+    const cols=[
+      {id:'recibido',label:'Recibido',icon:'📥',color:'#0284c7'},
+      {id:'preparando',label:'Preparando',icon:'⚙️',color:'#d97706'},
+      {id:'para_despachar',label:'Para Despachar',icon:'🚚',color:'#7c3aed'},
+      {id:'entregado',label:'Entregado',icon:'✅',color:'#16a34a'},
+    ];
+    const puede=['admin','vendedor','deposito'].includes(user.rol);
+    document.getElementById('kanban-board').innerHTML = cols.map(col=>{
+      const its=all.filter(p=>p.estado===col.id);
+      const sig=ESTADOS[ESTADOS.indexOf(col.id)+1];
+      return `<div class="kanban-col">
+        <div class="kanban-col-header">
+          <span class="kanban-col-title" style="color:${col.color}">${col.icon} ${col.label}</span>
+          <span class="kanban-count">${its.length}</span>
+        </div>
+        ${its.length ? its.map(p=>`
+          <div class="kanban-card">
+            <div class="kanban-card-num">#${p.numero}</div>
+            <div class="kanban-card-client">${p.clientes?.nombre||'—'}</div>
+            <div class="kanban-card-total">${fMoney(p.total)}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">${fDate(p.created_at)}</div>
+            <div class="kanban-card-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="verPedido('${p.id}')">Ver</button>
+              ${puede&&sig?`<button class="btn btn-primary btn-sm" onclick="aplicarEstado('${p.id}','${sig}')">→ ${labelEst(sig)}</button>`:''}
+            </div>
+          </div>`).join('')
+          : `<div style="color:var(--text3);font-size:12px;font-weight:600;text-align:center;padding:16px;">Sin pedidos</div>`}
+      </div>`;
+    }).join('');
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ======================== NUEVO PEDIDO ========================
+async function initPedido() {
+  items=[];
+  const clis = await db('clientes','GET',null,'?order=nombre')||[];
+  clientes = clis;
+  if (user.rol==='cliente') {
+    document.getElementById('cliente-wrap').innerHTML=`<label>Cliente</label><input type="text" value="${user.clienteData?.nombre||user.nombre}" disabled>`;
+  } else {
+    document.getElementById('cliente-wrap').innerHTML=`<label>Cliente</label>
+      <select id="pedido-cliente">
+        <option value="">-- Seleccionar cliente --</option>
+        ${clis.map(c=>`<option value="${c.id}">${c.nombre}${c.cuit?' — '+c.cuit:''}</option>`).join('')}
+      </select>`;
+  }
+  productos = await db('productos','GET',null,'?order=sku&select=id,sku,nombre,precio_venta')||[];
+  renderItems();
+}
+
+function renderItems() {
+  const c=document.getElementById('items-container');
+  const cnt=document.getElementById('items-count');
+  if (!items.length) {
+    c.innerHTML='';
+    cnt.textContent='Sin productos agregados';
+    calcTotal(); return;
+  }
+  cnt.textContent=`${items.length} producto${items.length>1?'s':''} en el pedido`;
+  c.innerHTML=items.map((it,i)=>`
+    <div class="item-card">
+      <div class="item-card-header">
+        <span class="item-sku">${it.codigo||'—'}</span>
+        <span class="item-nombre">${it.descripcion||'Sin nombre'}</span>
+        <button class="item-delete" onclick="quitarItem(${i})">✕</button>
+      </div>
+      <div class="item-card-body">
+        <div class="item-field">
+          <label>Cantidad</label>
+          <input type="number" value="${it.cantidad}" min="0.001" step="any"
+            onchange="items[${i}].cantidad=parseFloat(this.value)||0;calcTotal()" inputmode="decimal">
+        </div>
+        <div class="item-field">
+          <label>Precio unit.</label>
+          <input type="number" value="${it.precio}" min="0" step="0.01"
+            onchange="items[${i}].precio=parseFloat(this.value)||0;calcTotal()" inputmode="decimal">
+        </div>
+      </div>
+      <div style="text-align:right;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--text);margin-top:8px;">
+        Subtotal: ${fMoney(it.cantidad*it.precio)}
+      </div>
+    </div>`).join('');
+  calcTotal();
+}
+
+function calcTotal() {
+  const t=items.reduce((s,i)=>s+(i.cantidad*i.precio),0);
+  document.getElementById('pedido-total').textContent=fMoney(t);
+}
+
+function quitarItem(i) { items.splice(i,1); renderItems(); }
+function limpiarPedido() { items=[]; renderItems(); }
+
+async function guardarPedido() {
+  const cid = user.rol==='cliente'?user.cliente_id:document.getElementById('pedido-cliente')?.value;
+  if (!cid) { toast('Seleccioná un cliente','error'); return; }
+  const vals=items.filter(i=>i.codigo&&i.cantidad>0);
+  if (!vals.length) { toast('Agregá al menos un producto','error'); return; }
+  try {
+    const obs=document.getElementById('pedido-obs')?.value||'';
+    const [ped]=await db('pedidos','POST',{cliente_id:cid,usuario_carga_id:user.id,observaciones:obs,estado:'recibido'});
+    for (const it of vals) {
+      await db('pedido_items','POST',{
+        pedido_id:ped.id, producto_id:it.producto_id||null,
+        codigo_producto:it.codigo, descripcion_producto:it.descripcion||it.codigo,
+        cantidad:it.cantidad, precio_unitario:it.precio
+      });
+    }
+    toast(`Pedido #${ped.numero} confirmado ✅`);
+    items=[]; renderItems();
+    if(document.getElementById('pedido-obs')) document.getElementById('pedido-obs').value='';
+    setTimeout(()=>{ if(confirm(`¿Ver el pedido #${ped.numero}?`)){navTo('pedidos');setTimeout(()=>verPedido(ped.id),500);} },600);
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ======================== BUSCADOR INTELIGENTE ========================
+let _bTimeout=null;
+
+function buscarEnCatalogo(q) {
+  clearTimeout(_bTimeout);
+  const dd=document.getElementById('dropdown-productos');
+  if (!q||q.length<2) { dd.style.display='none'; dd.innerHTML=''; return; }
+  _bTimeout=setTimeout(()=>{
+    const ql=q.toLowerCase().trim();
+    const res=productos.filter(p=>(p.sku||'').toLowerCase().includes(ql)||(p.nombre||'').toLowerCase().includes(ql)).slice(0,15);
+    if (!res.length) {
+      dd.innerHTML=`<div style="padding:14px;text-align:center;font-size:13px;color:var(--text2);">Sin resultados para "${q}"</div>`;
+      dd.style.display='block'; return;
+    }
+    dd.innerHTML=res.map(p=>`
+      <div class="dp-item" onclick="agregarProducto('${p.id}')">
+        <span class="dp-sku">${p.sku||'—'}</span>
+        <span class="dp-nombre">${resaltar(p.nombre,ql)}</span>
+        <span class="dp-precio">${fMoney(p.precio_venta)}</span>
+      </div>`).join('');
+    dd.style.display='block';
+  },120);
+}
+
+function resaltar(txt,q) {
+  return txt.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'), '<mark>$1</mark>');
+}
+
+function agregarProducto(pid) {
+  const p=productos.find(x=>x.id===pid);
+  if (!p) return;
+  const ex=items.findIndex(i=>i.producto_id===pid);
+  if (ex>=0) {
+    items[ex].cantidad+=1;
+    toast(`+1 → ${p.nombre.substring(0,25)}...`);
+  } else {
+    items.push({codigo:p.sku||'',descripcion:p.nombre,cantidad:1,precio:p.precio_venta||0,producto_id:p.id});
+  }
+  renderItems();
+  document.getElementById('buscador-producto').value='';
+  document.getElementById('dropdown-productos').style.display='none';
+  document.getElementById('dropdown-productos').innerHTML='';
+  document.getElementById('buscador-producto').focus();
+}
+
+document.addEventListener('click',e=>{
+  if (!e.target.closest('#buscador-producto')&&!e.target.closest('#dropdown-productos')) {
+    const dd=document.getElementById('dropdown-productos');
+    if (dd) { dd.style.display='none'; }
+  }
+});
+
+function importarPedidoXLS(input) {
+  const file=input.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try {
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const data=XLSX.utils.sheet_to_json(ws,{header:1});
+      let ok=0;
+      for(const row of data){
+        if(!row[0])continue;
+        const cod=String(row[0]).trim();
+        if(!cod||['codigo','sku','cod'].includes(cod.toLowerCase()))continue;
+        const cant=parseFloat(row[1])||1;
+        const prod=productos.find(p=>(p.sku||'').toLowerCase()===cod.toLowerCase());
+        items.push({codigo:cod,descripcion:prod?.nombre||String(row[2]||cod),cantidad:cant,precio:prod?.precio_venta||parseFloat(row[3]||0)||0,producto_id:prod?.id||null});
+        ok++;
+      }
+      renderItems(); toast(`${ok} ítems importados ✅`);
+    } catch(err){toast('Error al leer archivo','error');}
+    input.value='';
+  };
+  r.readAsBinaryString(file);
+}
+
+// ======================== PRODUCTOS ========================
+async function cargarProductos() {
+  productos=await db('productos','GET',null,'?order=sku&select=*,categorias(nombre)')||[];
+  renderProductos(productos);
+}
+function filtrarProductos() {
+  const q=document.getElementById('prod-search').value.toLowerCase();
+  renderProductos(productos.filter(p=>(p.sku||'').toLowerCase().includes(q)||(p.nombre||'').toLowerCase().includes(q)));
+}
+function renderProductos(list) {
+  const el=document.getElementById('productos-lista');
+  if (!list.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🏷</div><div class="empty-text">Sin productos</div></div>`;return;}
+  const ea=user.rol==='admin';
+  el.innerHTML=list.map(p=>`
+    <div class="card" style="padding:12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:var(--accent2)">${p.sku||'—'}</span>
+        <span style="flex:1;font-size:13px;font-weight:700">${p.nombre}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:var(--accent)">${fMoney(p.precio_venta)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2)">${p.categorias?.nombre||''} · ${p.unidad||'unidad'}</div>
+      ${ea?`<div style="margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="modalProducto('${p.id}')">✏️ Editar</button></div>`:''}
+    </div>`).join('');
+}
+
+function modalProducto(id=null) {
+  const p=id?productos.find(x=>x.id===id):null;
+  document.getElementById('mprod-title').textContent=p?'Editar producto':'Nuevo producto';
+  document.getElementById('mprod-body').innerHTML=`
+    <div class="form-group"><label>Código SKU</label><input id="fp-sku" value="${p?.sku||''}" placeholder="Ej: ALFA001"></div>
+    <div class="form-group"><label>Nombre</label><input id="fp-nombre" value="${p?.nombre||''}"></div>
+    <div class="form-group"><label>Precio de venta</label><input id="fp-precio" type="number" step="0.01" value="${p?.precio_venta||0}" inputmode="decimal"></div>
+    <div class="form-group"><label>Unidad</label>
+      <select id="fp-unidad">${['unidad','kg','litro','caja','docena','bulto','pack'].map(u=>`<option ${(p?.unidad||'unidad')===u?'selected':''}>${u}</option>`).join('')}</select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="guardarProducto('${id||''}')">Guardar producto</button>`;
+  openModal('modal-producto');
+}
+
+async function guardarProducto(id) {
+  const data={sku:document.getElementById('fp-sku').value.trim(),nombre:document.getElementById('fp-nombre').value.trim(),precio_venta:parseFloat(document.getElementById('fp-precio').value)||0,unidad:document.getElementById('fp-unidad').value};
+  try {
+    if(id) await db('productos','PATCH',data,`?id=eq.${id}`);
+    else await db('productos','POST',data);
+    toast('Guardado ✅'); closeModal('modal-producto'); cargarProductos();
+  } catch(e){toast('Error: '+e.message,'error');}
+}
+
+function importarProductos(input) {
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const data=XLSX.utils.sheet_to_json(ws,{header:1});
+      let ok=0,err=0;
+      for(const row of data.slice(1)){
+        if(!row[0])continue;
+        try{await db('productos','POST',{sku:String(row[0]||'').trim(),nombre:String(row[1]||'').trim(),precio_venta:parseFloat(row[3]||0)||0,unidad:String(row[4]||'unidad').trim()});ok++;}catch{err++;}
+      }
+      toast(`${ok} productos importados${err?`, ${err} errores`:''} ✅`);cargarProductos();
+    }catch(ex){toast('Error al leer archivo','error');}
+    input.value='';
+  };
+  r.readAsBinaryString(file);
+}
+
+// ======================== CLIENTES ========================
+async function cargarClientes() {
+  clientes=await db('clientes','GET',null,'?order=nombre')||[];
+  const el=document.getElementById('clientes-lista');
+  if (!clientes.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">Sin clientes</div></div>`;return;}
+  const ea=user.rol==='admin';
+  el.innerHTML=clientes.map(c=>`
+    <div class="card" style="padding:12px;margin-bottom:8px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:3px;">${c.nombre}</div>
+      <div style="font-size:12px;color:var(--text2);">CUIT: ${c.cuit||'—'} · ${c.email||'sin email'}</div>
+      <div style="font-size:12px;color:var(--text2);">${c.telefono||''} ${c.direccion?'· '+c.direccion:''}</div>
+      ${ea?`<div style="margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="modalCliente('${c.id}')">✏️ Editar</button></div>`:''}
+    </div>`).join('');
+}
+
+function modalCliente(id=null) {
+  const c=id?clientes.find(x=>x.id===id):null;
+  document.getElementById('mcli-title').textContent=c?'Editar cliente':'Nuevo cliente';
+  document.getElementById('mcli-body').innerHTML=`
+    <div class="form-group"><label>Razón Social</label><input id="fc-nombre" value="${c?.nombre||''}"></div>
+    <div class="form-group"><label>CUIT (sin guiones)</label><input id="fc-cuit" value="${c?.cuit||''}" placeholder="20123456789" inputmode="numeric"></div>
+    <div class="form-group"><label>Email</label><input id="fc-email" type="email" value="${c?.email||''}" inputmode="email"></div>
+    <div class="form-group"><label>Teléfono</label><input id="fc-tel" value="${c?.telefono||''}" inputmode="tel"></div>
+    <div class="form-group"><label>Dirección</label><input id="fc-dir" value="${c?.direccion||''}"></div>
+    <button class="btn btn-primary btn-full" onclick="guardarCliente('${id||''}')">Guardar cliente</button>`;
+  openModal('modal-cliente');
+}
+
+async function guardarCliente(id) {
+  const data={nombre:document.getElementById('fc-nombre').value.trim(),cuit:document.getElementById('fc-cuit').value.trim(),email:document.getElementById('fc-email').value.trim(),telefono:document.getElementById('fc-tel').value.trim(),direccion:document.getElementById('fc-dir').value.trim()};
+  try{
+    if(id) await db('clientes','PATCH',data,`?id=eq.${id}`);
+    else await db('clientes','POST',data);
+    toast('Cliente guardado ✅'); closeModal('modal-cliente'); cargarClientes();
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+function importarClientes(input){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const data=XLSX.utils.sheet_to_json(ws,{header:1});
+      let ok=0,err=0;
+      for(const row of data.slice(1)){
+        if(!row[0])continue;
+        try{await db('clientes','POST',{nombre:String(row[0]||'').trim(),cuit:String(row[1]||'').trim(),email:String(row[2]||'').trim(),telefono:String(row[3]||'').trim(),direccion:String(row[4]||'').trim()});ok++;}catch{err++;}
+      }
+      toast(`${ok} clientes importados ✅`);cargarClientes();
+    }catch(ex){toast('Error al leer archivo','error');}
+    input.value='';
+  };
+  r.readAsBinaryString(file);
+}
+
+// ======================== USUARIOS ========================
+async function cargarUsuarios() {
+  const list=await db('sys_usuarios','GET',null,'?order=rol')||[];
+  const el=document.getElementById('usuarios-lista');
+  if(!list.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🔑</div><div class="empty-text">Sin usuarios</div></div>`;return;}
+  el.innerHTML=list.map(u=>`
+    <div class="card" style="padding:12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:14px;font-weight:700">${u.nombre}</span>
+        <span class="tag-rol tag-${u.rol}">${u.rol}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2)">${u.email}</div>
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="btn ${u.activo?'btn-danger':'btn-success'} btn-sm" onclick="toggleUser('${u.id}',${u.activo})">${u.activo?'Desactivar':'Activar'}</button>
+      </div>
+    </div>`).join('');
+}
+
+function modalUsuario() {
+  document.getElementById('musu-body').innerHTML=`
+    <div class="form-group"><label>Nombre</label><input id="fu-nombre"></div>
+    <div class="form-group"><label>Email</label><input id="fu-email" type="email" inputmode="email"></div>
+    <div class="form-group"><label>Contraseña</label><input id="fu-pass"></div>
+    <div class="form-group"><label>Rol</label>
+      <select id="fu-rol" onchange="document.getElementById('fu-cli-wrap').style.display=this.value==='cliente'?'block':'none'">
+        <option value="admin">Admin</option><option value="vendedor">Vendedor</option>
+        <option value="deposito">Depósito</option><option value="cliente">Cliente</option>
+      </select>
+    </div>
+    <div class="form-group" id="fu-cli-wrap" style="display:none">
+      <label>Cliente asociado</label>
+      <select id="fu-cli"><option value="">-- Seleccionar --</option>${clientes.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}</select>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="guardarUsuario()">Crear usuario</button>`;
+  openModal('modal-usuario');
+}
+
+async function guardarUsuario() {
+  const rol=document.getElementById('fu-rol').value;
+  const data={nombre:document.getElementById('fu-nombre').value.trim(),email:document.getElementById('fu-email').value.trim(),password_hash:document.getElementById('fu-pass').value.trim(),rol,cliente_id:rol==='cliente'?(document.getElementById('fu-cli').value||null):null};
+  try{await db('sys_usuarios','POST',data);toast('Usuario creado ✅');closeModal('modal-usuario');cargarUsuarios();}
+  catch(e){toast('Error: '+e.message,'error');}
+}
+
+async function toggleUser(id,activo) {
+  try{await db('sys_usuarios','PATCH',{activo:!activo},`?id=eq.${id}`);toast(`Usuario ${activo?'desactivado':'activado'}`);cargarUsuarios();}
+  catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ======================== IMPRIMIR ========================
+async function imprimirPedido(id) {
+  try{
+    const [p]=await db('pedidos','GET',null,`?id=eq.${id}&select=*,clientes(nombre,cuit,email,telefono,direccion)`);
+    const its=await db('pedido_items','GET',null,`?pedido_id=eq.${id}`)||[];
+    const w=window.open('','_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>Pedido #${p.numero} — Dorisol</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+      body{font-family:Arial,sans-serif;padding:20px;max-width:640px;margin:0 auto;color:#1e293b;font-size:14px;}
+      .header{display:flex;justify-content:space-between;border-bottom:2px solid #e0e6f0;padding-bottom:14px;margin-bottom:18px;}
+      .logo{font-size:20px;font-weight:800;color:#2563eb;}
+      .num{font-size:28px;font-weight:800;color:#2563eb;text-align:right;}
+      .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#dbeafe;color:#1d4ed8;}
+      .info{background:#f4f6fa;padding:14px;border-radius:8px;margin-bottom:16px;}
+      .item{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #e0e6f0;}
+      .item-left{flex:1;}
+      .item-code{font-family:monospace;font-size:11px;color:#0ea5e9;font-weight:700;}
+      .total{text-align:right;margin-top:16px;padding-top:14px;border-top:2px solid #2563eb;}
+      .total-val{font-size:24px;font-weight:800;color:#2563eb;}
+      .print-btn{display:block;width:100%;margin-top:24px;padding:14px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:Arial;}
+      @media print{.print-btn{display:none}}
+    </style></head><body>
+    <div class="header">
+      <div><div class="logo">📦 Dorisol</div><div style="font-size:12px;color:#64748b">Sistema de pedidos</div></div>
+      <div><div class="num">#${p.numero}</div><span class="badge">${labelEst(p.estado)}</span><div style="font-size:12px;color:#64748b;margin-top:4px">${fDate(p.created_at)}</div></div>
+    </div>
+    <div class="info">
+      <strong>${p.clientes?.nombre}</strong><br>
+      CUIT: ${p.clientes?.cuit||'—'}<br>
+      ${p.clientes?.email?p.clientes.email+'<br>':''}
+      ${p.clientes?.telefono?p.clientes.telefono+'<br>':''}
+    </div>
+    ${p.observaciones?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px;margin-bottom:14px;">📝 ${p.observaciones}</div>`:''}
+    ${its.map(i=>`<div class="item"><div class="item-left"><div class="item-code">${i.codigo_producto}</div><div style="font-weight:600">${i.descripcion_producto}</div><div style="font-size:12px;color:#64748b">${i.cantidad} × ${fMoney(i.precio_unitario)}</div></div><div style="font-weight:700;text-align:right">${fMoney(i.subtotal)}</div></div>`).join('')}
+    <div class="total"><div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Total del pedido</div><div class="total-val">${fMoney(p.total)}</div></div>
+    <button class="print-btn" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+    </body></html>`);
+    w.document.close();
+  }catch(e){toast('Error al imprimir','error');}
+}
+
+// ======================== MODALES ========================
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// ======================== UTILS ========================
+function fMoney(n){return'$'+(parseFloat(n)||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+function labelEst(e){return{recibido:'Recibido',preparando:'Preparando',para_despachar:'Para despachar',entregado:'Entregado',cancelado:'Cancelado'}[e]||e;}
+</script>
+</body>
+</html>
